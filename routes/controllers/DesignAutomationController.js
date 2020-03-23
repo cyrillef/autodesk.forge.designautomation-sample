@@ -1,3 +1,25 @@
+//
+// Copyright (c) 2019 Autodesk, Inc.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 /*jshint esversion: 8 */
 
 const _path = require('path');
@@ -22,9 +44,8 @@ router.use(bodyParser.json());
 
 // Middleware for obtaining a token for each request.
 router.use(async (req, res, next) => {
-	const token = await getInternalToken();
-	req.oauth_token = token;
-	req.oauth_client = getClient();
+	req.oauth_client = await getClient(/*config.scopes.internal*/);
+	req.oauth_token = req.oauth_client.getCredentials();
 	next();
 });
 
@@ -33,28 +54,28 @@ class Utils {
 	/// <summary>
 	/// Returns the directory where bindles are stored on the local machine.
 	/// </summary>
-	static get LocalBundlesFolder() {
+	static get LocalBundlesFolder () {
 		return (_path.resolve(_path.join(__dirname, '../..', 'bundles')));
 	}
 
 	/// <summary>
 	/// Prefix for AppBundles and Activities
 	/// </summary>
-	static get NickName() {
+	static get NickName () {
 		return (config.credentials.client_id);
 	}
 
 	/// <summary>
 	/// Alias for the app (e.g. DEV, STG, PROD). This value may come from an environment variable
 	/// </summary>
-	static get Alias() {
+	static get Alias () {
 		return ('dev');
 	}
 
 	/// <summary>
 	/// Search files in a folder and filter them.
 	/// </summary>
-	static async findFiles(dir, filter) {
+	static async findFiles (dir, filter) {
 		return (new Promise((fulfill, reject) => {
 			_fs.readdir(dir, (err, files) => {
 				if (err)
@@ -75,7 +96,7 @@ class Utils {
 	/// <summary>
 	/// Create a new DAv3 client/API with default settings
 	/// </summary>
-	static dav3API(oauth2) {
+	static dav3API (oauth2) {
 		let apiClient = new dav3.AutodeskForgeDesignAutomationClient(/*config.client*/);
 		apiClient.authManager.authentications['2-legged'].accessToken = oauth2.access_token;
 		return (new dav3.AutodeskForgeDesignAutomationApi(apiClient));
@@ -84,7 +105,7 @@ class Utils {
 	/// <summary>
 	/// Helps identify the engine
 	/// </summary>
-	static EngineAttributes(engine) {
+	static EngineAttributes (engine) {
 		if (engine.includes('3dsMax'))
 			return ({
 				commandLine: '$(engine.path)\\3dsmaxbatch.exe -sceneFile $(args[inputFile].path) $(settings[script].path)',
@@ -113,7 +134,7 @@ class Utils {
 		throw new Error('Invalid engine');
 	}
 
-	static FormDataLength(form) {
+	static FormDataLength (form) {
 		return (new Promise((fulfill, reject) => {
 			form.getLength((err, length) => {
 				if (err)
@@ -126,7 +147,7 @@ class Utils {
 	/// <summary>
 	/// Upload a file
 	/// </summary>
-	static uploadFormDataWithFile(filepath, endpoint, params = null) {
+	static uploadFormDataWithFile (filepath, endpoint, params = null) {
 		return (new Promise(async (fulfill, reject) => {
 			const fileStream = _fs.createReadStream(filepath);
 
@@ -144,12 +165,12 @@ class Utils {
 
 			const urlinfo = _url.parse(endpoint);
 			const postReq = http.request({
-					host: urlinfo.host,
-					port: (urlinfo.port || (urlinfo.protocol === 'https:' ? 443 : 80)),
-					path: urlinfo.pathname,
-					method: 'POST',
-					headers: headers
-				},
+				host: urlinfo.host,
+				port: (urlinfo.port || (urlinfo.protocol === 'https:' ? 443 : 80)),
+				path: urlinfo.pathname,
+				method: 'POST',
+				headers: headers
+			},
 				response => {
 					fulfill(response.statusCode);
 				},
@@ -230,11 +251,11 @@ router.post('/forge/designautomation/appbundles', async /*CreateAppBundle*/ (req
 		// 		description: `Description for ${appBundleName}`
 		// 	};
 		const appBundleSpec = dav3.AppBundle.constructFromObject({
-				package: appBundleName,
-				engine: engineName,
-				id: appBundleName,
-				description: `Description for ${appBundleName}`
-			});
+			package: appBundleName,
+			engine: engineName,
+			id: appBundleName,
+			description: `Description for ${appBundleName}`
+		});
 		try {
 			newAppVersion = await api.createAppBundle(appBundleSpec);
 		} catch (ex) {
@@ -246,10 +267,10 @@ router.post('/forge/designautomation/appbundles', async /*CreateAppBundle*/ (req
 
 		// create alias pointing to v1
 		const aliasSpec = //dav3.Alias.constructFromObject({
-			{
-				id: Utils.Alias,
-				version: 1
-			};
+		{
+			id: Utils.Alias,
+			version: 1
+		};
 		try {
 			const newAlias = await api.createAppBundleAlias(appBundleName, aliasSpec);
 		} catch (ex) {
@@ -261,10 +282,10 @@ router.post('/forge/designautomation/appbundles', async /*CreateAppBundle*/ (req
 	} else {
 		// create new version
 		const appBundleSpec = //dav3.AppBundle.constructFromObject({
-			{
-				engine: engineName,
-				description: appBundleName
-			};
+		{
+			engine: engineName,
+			description: appBundleName
+		};
 		try {
 			newAppVersion = await api.createAppBundleVersion(appBundleName, appBundleSpec);
 		} catch (ex) {
@@ -276,9 +297,9 @@ router.post('/forge/designautomation/appbundles', async /*CreateAppBundle*/ (req
 
 		// update alias pointing to v+1
 		const aliasSpec = //dav3.AliasPatch.constructFromObject({
-			{
-				version: newAppVersion.Version
-			};
+		{
+			version: newAppVersion.Version
+		};
 		try {
 			const newAlias = await api.modifyAppBundleAlias(appBundleName, Utils.Alias, aliasSpec);
 		} catch (ex) {
@@ -489,7 +510,7 @@ router.post('/forge/designautomation/workitems', multer({
 		// in case bucket already exists
 	}
 	// 2. upload inputFile
-	const inputFileNameOSS = `${new Date().toISOString().replace (/[-T:\.Z]/gm, '').substring(0, 14)}_input_${_path.basename(req.file.originalname)}`; // avoid overriding
+	const inputFileNameOSS = `${new Date().toISOString().replace(/[-T:\.Z]/gm, '').substring(0, 14)}_input_${_path.basename(req.file.originalname)}`; // avoid overriding
 	try {
 		let contentStream = _fs.createReadStream(req.file.path);
 		await new ForgeAPI.ObjectsApi().uploadObject(bucketKey, inputFileNameOSS, req.file.size, contentStream, {}, req.oauth_client, req.oauth_token);
@@ -527,7 +548,7 @@ router.post('/forge/designautomation/workitems', multer({
 	// };
 
 	// Better to use a presigned url to avoid the token to expire
-	const outputFileNameOSS = `${new Date().toISOString().replace (/[-T:\.Z]/gm, '').substring(0, 14)}_output_${_path.basename(req.file.originalname)}`; // avoid overriding
+	const outputFileNameOSS = `${new Date().toISOString().replace(/[-T:\.Z]/gm, '').substring(0, 14)}_output_${_path.basename(req.file.originalname)}`; // avoid overriding
 	let signedUrl = null;
 	try {
 		// write signed resource requires the object to already exist :(
@@ -535,11 +556,11 @@ router.post('/forge/designautomation/workitems', multer({
 		signedUrl = await new ForgeAPI.ObjectsApi().createSignedResource(
 			bucketKey,
 			outputFileNameOSS, {
-				minutesExpiration: 60,
-				singleUse: true
-			}, {
-				access: 'write'
-			},
+			minutesExpiration: 60,
+			singleUse: true
+		}, {
+			access: 'write'
+		},
 			req.oauth_client, req.oauth_token
 		);
 		signedUrl = signedUrl.body.signedUrl;
@@ -628,11 +649,11 @@ router.post('/forge/callback/designautomation', async /*OnCallback*/ (req, res) 
 				const signedUrl = await objectsApi.createSignedResource(
 					bucketKey,
 					req.query.outputFileName, {
-						minutesExpiration: 10,
-						singleUse: false
-					}, {
-						access: 'read'
-					},
+					minutesExpiration: 10,
+					singleUse: false
+				}, {
+					access: 'read'
+				},
 					req.oauth_client, req.oauth_token
 				);
 				socketIO.emit('downloadResult', signedUrl.body.signedUrl);
