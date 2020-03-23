@@ -55,22 +55,23 @@ let dav3Instance = null;
 class Utils {
 
 	static async Instance () {
-		if ( dav3Instance === null ) {
+		if (dav3Instance === null) {
 			// Here it is ok to not await since we awaited in the call router.use()
 			dav3Instance = new dav3.AutodeskForgeDesignAutomationClient();
 			dav3Instance.config.expires_in = 0;
 
 			let FetchRefresh = async () => {
-				console.log ("fetchToken");
+				console.log("fetchToken");
 				let client = await getClient();
-				let credentials = client.getCredentials ();
-				
-				let endsIn = Math.floor((new Date (credentials.expires_at).getTime() - new Date().getTime()) / 1000);
+				let credentials = client.getCredentials();
+
+				let endsIn = Math.floor((new Date(credentials.expires_at).getTime() - new Date().getTime()) / 1000);
 				credentials.expires_in = endsIn;
 				dav3Instance.authManager.authentications['2-legged'].authConfig.expires_in = endsIn;
 
-				credentials.expires_in = 30;
-				dav3Instance.authManager.authentications['2-legged'].authConfig.expires_in = 30;
+				// This is for testing
+				// credentials.expires_in = 30;
+				// dav3Instance.authManager.authentications['2-legged'].authConfig.expires_in = 30;
 
 				return (credentials);
 			};
