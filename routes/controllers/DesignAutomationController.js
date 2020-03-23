@@ -49,7 +49,41 @@ router.use(async (req, res, next) => {
 	next();
 });
 
+// Static instance of the DA API
+let dav3Instance = null;
+
 class Utils {
+
+	static async Instance () {
+		if ( dav3Instance === null ) {
+			// Here it is ok to not await since we awaited in the call router.use()
+			dav3Instance = new dav3.AutodeskForgeDesignAutomationClient();
+			dav3Instance.config.expires_in = 0;
+
+			let FetchRefresh = async () => {
+				console.log ("fetchToken");
+				let client = await getClient();
+				let credentials = client.getCredentials ();
+				
+				let endsIn = Math.floor((new Date (credentials.expires_at).getTime() - new Date().getTime()) / 1000);
+				credentials.expires_in = endsIn;
+				dav3Instance.authManager.authentications['2-legged'].authConfig.expires_in = endsIn;
+
+				credentials.expires_in = 30;
+				dav3Instance.authManager.authentications['2-legged'].authConfig.expires_in = 30;
+
+				return (credentials);
+			};
+
+			//dav3Instance.config.fetchToken = FetchRefresh;
+			//dav3Instance.config.refreshToken = FetchRefresh;
+
+			dav3Instance.authManager.authentications['2-legged'].fetchToken = FetchRefresh;
+			dav3Instance.authManager.authentications['2-legged'].refreshToken = FetchRefresh;
+
+		}
+		return (dav3Instance);
+	}
 
 	/// <summary>
 	/// Returns the directory where bindles are stored on the local machine.
@@ -96,9 +130,10 @@ class Utils {
 	/// <summary>
 	/// Create a new DAv3 client/API with default settings
 	/// </summary>
-	static dav3API (oauth2) {
-		let apiClient = new dav3.AutodeskForgeDesignAutomationClient(/*config.client*/);
-		apiClient.authManager.authentications['2-legged'].accessToken = oauth2.access_token;
+	static async dav3API (oauth2) {
+		let apiClient = await Utils.Instance();
+		// let apiClient2 = new dav3.AutodeskForgeDesignAutomationClient(/*config.client*/);
+		// apiClient2.authManager.authentications['2-legged'].accessToken = oauth2.access_token;
 		return (new dav3.AutodeskForgeDesignAutomationApi(apiClient));
 	}
 
@@ -202,7 +237,7 @@ router.get('/appbundles', async /*GetLocalBundles*/ (req, res) => {
 router.get('/forge/designautomation/engines', async /*GetAvailableEngines*/ (req, res) => {
 	let that = this;
 	try {
-		const api = Utils.dav3API(req.oauth_token);
+		const api = await Utils.dav3API(req.oauth_token);
 		let engines = await api.getEngines();
 		res.json(engines.data.sort()); // return list of engines
 	} catch (ex) {
@@ -229,7 +264,7 @@ router.post('/forge/designautomation/appbundles', async /*CreateAppBundle*/ (req
 	const packageZipPath = _path.join(Utils.LocalBundlesFolder, zipFileName + '.zip');
 
 	// get defined app bundles
-	const api = Utils.dav3API(req.oauth_token);
+	const api = await Utils.dav3API(req.oauth_token);
 	let appBundles = null;
 	try {
 		appBundles = await api.getAppBundles();
@@ -345,7 +380,7 @@ router.post('/forge/designautomation/appbundles', async /*CreateAppBundle*/ (req
 /// Clear the accounts (for debugging purpouses)
 /// </summary>
 router.delete('/forge/designautomation/account', async /*ClearAccount*/ (req, res) => {
-	let api = Utils.dav3API(req.oauth_token);
+	let api = await Utils.dav3API(req.oauth_token);
 	// clear account
 	await api.deleteForgeApp('me');
 	res.status(200).end();
@@ -366,7 +401,7 @@ router.post('/forge/designautomation/activities', async /*CreateActivity*/ (req,
 	const activityName = zipFileName + 'Activity';
 
 	// get defined activities
-	const api = Utils.dav3API(req.oauth_token);
+	const api = await Utils.dav3API(req.oauth_token);
 	let activities = null;
 	try {
 		activities = await api.getActivities();
@@ -457,7 +492,7 @@ router.post('/forge/designautomation/activities', async /*CreateActivity*/ (req,
 /// Get all Activities defined for this account
 /// </summary>
 router.get('/forge/designautomation/activities', async /*GetDefinedActivities*/ (req, res) => {
-	const api = Utils.dav3API(req.oauth_token);
+	const api = await Utils.dav3API(req.oauth_token);
 	// filter list of 
 	let activities = null;
 	try {
@@ -597,7 +632,7 @@ router.post('/forge/designautomation/workitems', multer({
 	};
 	let workItemStatus = null;
 	try {
-		const api = Utils.dav3API(req.oauth_token);
+		const api = await Utils.dav3API(req.oauth_token);
 		workItemStatus = await api.createWorkItem(workItemSpec);
 	} catch (ex) {
 		console.error(ex);
