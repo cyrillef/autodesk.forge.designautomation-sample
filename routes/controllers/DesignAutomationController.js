@@ -58,30 +58,15 @@ class Utils {
 		if (dav3Instance === null) {
 			// Here it is ok to not await since we awaited in the call router.use()
 			dav3Instance = new dav3.AutodeskForgeDesignAutomationClient();
-			dav3Instance.config.expires_in = 0;
-
-			let FetchRefresh = async () => {
-				console.log("fetchToken");
+			let FetchRefresh = async (data) => { // data is undefined in a fetch, but contains the old credentials in a refresh
 				let client = await getClient();
 				let credentials = client.getCredentials();
-
-				let endsIn = Math.floor((new Date(credentials.expires_at).getTime() - new Date().getTime()) / 1000);
-				credentials.expires_in = endsIn;
-				dav3Instance.authManager.authentications['2-legged'].authConfig.expires_in = endsIn;
-
-				// This is for testing
-				// credentials.expires_in = 30;
-				// dav3Instance.authManager.authentications['2-legged'].authConfig.expires_in = 30;
-
+				// The line below is for testing
+				//credentials.expires_in = 30; credentials.expires_at = new Date(Date.now() + credentials.expires_in * 1000);
 				return (credentials);
 			};
-
-			//dav3Instance.config.fetchToken = FetchRefresh;
-			//dav3Instance.config.refreshToken = FetchRefresh;
-
 			dav3Instance.authManager.authentications['2-legged'].fetchToken = FetchRefresh;
 			dav3Instance.authManager.authentications['2-legged'].refreshToken = FetchRefresh;
-
 		}
 		return (dav3Instance);
 	}
@@ -132,9 +117,13 @@ class Utils {
 	/// Create a new DAv3 client/API with default settings
 	/// </summary>
 	static async dav3API (oauth2) {
-		let apiClient = await Utils.Instance();
+		// There is 2 alternatives to setup an API instance, providing the access_token directly
 		// let apiClient2 = new dav3.AutodeskForgeDesignAutomationClient(/*config.client*/);
 		// apiClient2.authManager.authentications['2-legged'].accessToken = oauth2.access_token;
+		//return (new dav3.AutodeskForgeDesignAutomationApi(apiClient));
+
+		// Or use the Auto-Refresh feature
+		let apiClient = await Utils.Instance();
 		return (new dav3.AutodeskForgeDesignAutomationApi(apiClient));
 	}
 
