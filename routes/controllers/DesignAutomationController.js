@@ -57,7 +57,7 @@ class Utils {
 	static async Instance () {
 		if (dav3Instance === null) {
 			// Here it is ok to not await since we awaited in the call router.use()
-			dav3Instance = new dav3.AutodeskForgeDesignAutomationClient();
+			dav3Instance = new dav3.AutodeskForgeDesignAutomationClient(config.client);
 			let FetchRefresh = async (data) => { // data is undefined in a fetch, but contains the old credentials in a refresh
 				let client = await getClient();
 				let credentials = client.getCredentials();
