@@ -100,5 +100,4 @@ This sample is licensed under the terms of the [MIT License](http://opensource.o
 Please see the [LICENSE](LICENSE) file for full details.
 
 ## Written by
-
 Cyrille Fauvel [@FAUVELCyrille](https://twitter.com/FAUVELCyrille), [Forge Partner Development](http://forge.autodesk.com)
